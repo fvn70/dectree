@@ -42,13 +42,28 @@ class DecisionTree:
                     split_1, split_2 = idx_1, idx_2
         return feature, f_value, split_1, split_2
 
+    def _chk_sample(self, node, x):
+        if node.term:
+            print(f'   Predicted label: {node.label}')
+            return
+        print(f'   Considering decision rule on feature {node.feature} with value {node.value}')
+        if node.value == x[node.feature]:
+            self._chk_sample(node.left, x)
+        else:
+            self._chk_sample(node.right, x)
+
+    def predict(self, node, X):
+        for i, x in X.iterrows():
+            print(f'Prediction for sample # {i}')
+            self._chk_sample(node, x)
+
     def fit(self, node, X, y):
         if self._is_leaf(X, y):
             node.set_term(y[0])
             return
         feature, f_value, split_1, split_2 = self._chose_split(X, y)
         node.set_split(feature, f_value)
-        print(f'Made split: {node.feature} is {node.value}')
+        # print(f'Made split: {node.feature} is {node.value}')
 
         node.left = Node()
         node.right = Node()
@@ -89,15 +104,20 @@ class Node:
           return f'Node split by {self.feature} = {self.value}:\n {self.left} {self.right}'
 
 
-
-def stage4():
+def stage5():
     fn = input()
-    # fn = 'test/data_stage4.csv'
-    df = pd.read_csv(fn, index_col=0)
+    # fn = 'test/data_stage5_train.csv test/data_stage5_test.csv'
+    fn = fn.split()
+    df = pd.read_csv(fn[0], index_col=0)
     X = df.iloc[:, :-1]
     y = df['Survived']
+
+    df = pd.read_csv(fn[1], index_col=0)
+    X_test = df.iloc[:]
+
     root = Node()
     tree = DecisionTree(root)
     tree.fit(root, X, y)
+    tree.predict(root, X_test)
 
-stage4()
+stage5()
