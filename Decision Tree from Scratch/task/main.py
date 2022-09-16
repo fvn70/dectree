@@ -1,80 +1,6 @@
+import numpy as np
 import pandas as pd
-
-class DecisionTree:
-    def __init__(self, root):
-        self.root = root
-        self.leaf_size = 1
-
-    def _gini(self, lst: list):
-        n = len(lst)
-        vals = set(lst)
-        sum = 0
-        for v in vals:
-            sum += (lst.count(v) / n) ** 2
-        return 1 - sum
-
-    def _gini_w(self, lst1, lst2):
-        n1 = len(lst1)
-        n2 = len(lst2)
-        wg = (n1 * self._gini(lst1) + n2 * self._gini(lst2)) / (n1 + n2)
-        return wg
-
-    def _is_leaf(self, X, y):
-        if X.shape[0] <= 1 or self._gini(y.to_list()) == 0:
-            return True
-        return all(map(lambda x: len(set(x)) == 1, X.values.T))
-
-    def _chose_split(self, X, y):
-        g_min = 1
-        feature = None
-        f_value = None
-        split_1, split_2 = None, None
-        for col_name, values in X.iteritems():
-            vals = values.unique()
-            for v in vals:
-                idx_1 = X.index[X[col_name] == v].tolist()
-                idx_2 = X.index[X[col_name] != v].tolist()
-                wg = self._gini_w(y.iloc[idx_1].tolist(), y.iloc[idx_2].tolist())
-                if wg < g_min:
-                    g_min = wg
-                    feature = col_name
-                    f_value = v
-                    split_1, split_2 = idx_1, idx_2
-        return feature, f_value, split_1, split_2
-
-    def _chk_sample(self, node, x):
-        if node.term:
-            print(f'   Predicted label: {node.label}')
-            return
-        print(f'   Considering decision rule on feature {node.feature} with value {node.value}')
-        if node.value == x[node.feature]:
-            self._chk_sample(node.left, x)
-        else:
-            self._chk_sample(node.right, x)
-
-    def predict(self, node, X):
-        for i, x in X.iterrows():
-            print(f'Prediction for sample # {i}')
-            self._chk_sample(node, x)
-
-    def fit(self, node, X, y):
-        if self._is_leaf(X, y):
-            node.set_term(y[0])
-            return
-        feature, f_value, split_1, split_2 = self._chose_split(X, y)
-        node.set_split(feature, f_value)
-        # print(f'Made split: {node.feature} is {node.value}')
-
-        node.left = Node()
-        node.right = Node()
-
-        left_X = X.iloc[split_1].reset_index(drop=True)
-        right_X = X.iloc[split_2].reset_index(drop=True)
-        left_y = y.iloc[split_1].reset_index(drop=True)
-        right_y = y.iloc[split_2].reset_index(drop=True)
-
-        self.fit(node.left, left_X, left_y)
-        self.fit(node.right, right_X, right_y)
+from sklearn.metrics import confusion_matrix
 
 class Node:
 
@@ -103,21 +29,104 @@ class Node:
       else:
           return f'Node split by {self.feature} = {self.value}:\n {self.left} {self.right}'
 
+class DecisionTree:
+    def __init__(self, leaf_size=1):
+        self.root = Node()
+        self.leaf_size = leaf_size
 
-def stage5():
+    def fit(self, X, y):
+        self._run_split(self.root, X, y)
+
+    def predict(self, X):
+        y_pred = []
+        for i, x in X.iterrows():
+            # print(f'Prediction for sample # {i}')
+            pred = self._chk_sample(self.root, x)
+            y_pred.append(pred)
+        return y_pred
+
+    def _chk_sample(self, node, x):
+        if node.term:
+            # print(f'   Predicted label: {node.label}')
+            return node.label
+        # print(f'   Considering decision rule on feature {node.feature} with value {node.value}')
+        if x[node.feature] == node.value:
+            return self._chk_sample(node.left, x)
+        else:
+            return self._chk_sample(node.right, x)
+
+    def _gini(self, lst: list):
+        n = len(lst)
+        vals = set(lst)
+        sum = 0
+        for v in vals:
+            sum += (lst.count(v) / n) ** 2
+        return 1 - sum
+
+    def _gini_w(self, lst1, lst2):
+        n1 = len(lst1)
+        n2 = len(lst2)
+        wg = (n1 * self._gini(lst1) + n2 * self._gini(lst2)) / (n1 + n2)
+        return wg
+
+    def _is_leaf(self, X, y):
+        if X.shape[0] <= self.leaf_size or self._gini(y.to_list()) == 0:
+            return True
+        return all(map(lambda x: len(set(x)) == 1, X.values.T))
+
+    def _chose_split(self, X, y):
+        g_min = 1
+        feature = None
+        f_value = None
+        split_1, split_2 = None, None
+        for col_name, values in X.iteritems():
+            vals = values.unique()
+            for v in vals:
+                idx_1 = X.index[X[col_name] == v].tolist()
+                idx_2 = X.index[X[col_name] != v].tolist()
+                wg = self._gini_w(y.iloc[idx_1].tolist(), y.iloc[idx_2].tolist())
+                if wg < g_min:
+                    g_min = wg
+                    feature = col_name
+                    f_value = v
+                    split_1, split_2 = idx_1, idx_2
+        return feature, f_value, split_1, split_2
+
+    def _run_split(self, node, X, y):
+        if self._is_leaf(X, y):
+            node.set_term(y.value_counts().idxmax())
+            return
+        feature, f_value, split_1, split_2 = self._chose_split(X, y)
+        node.set_split(feature, f_value)
+        # print(f'Made split: {node.feature} is {node.value}')
+
+        node.left = Node()
+        node.right = Node()
+
+        left_X = X.iloc[split_1].reset_index(drop=True)
+        right_X = X.iloc[split_2].reset_index(drop=True)
+        left_y = y.iloc[split_1].reset_index(drop=True)
+        right_y = y.iloc[split_2].reset_index(drop=True)
+
+        self._run_split(node.left, left_X, left_y)
+        self._run_split(node.right, right_X, right_y)
+
+def stage6():
     fn = input()
-    # fn = 'test/data_stage5_train.csv test/data_stage5_test.csv'
+    # fn = 'test/data_stage6_train.csv test/data_stage6_test.csv'
     fn = fn.split()
     df = pd.read_csv(fn[0], index_col=0)
     X = df.iloc[:, :-1]
     y = df['Survived']
-
     df = pd.read_csv(fn[1], index_col=0)
     X_test = df.iloc[:]
+    y_test = df['Survived']
 
-    root = Node()
-    tree = DecisionTree(root)
-    tree.fit(root, X, y)
-    tree.predict(root, X_test)
+    tree = DecisionTree(74)
+    tree.fit(X, y)
+    y_pred = tree.predict(X_test)
+    cm = confusion_matrix(y_test, y_pred, normalize='true')
+    print(round(cm[1, 1], 3), round(cm[0, 0], 3))
 
-stage5()
+stage6()
+
