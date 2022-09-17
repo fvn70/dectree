@@ -82,21 +82,25 @@ class DecisionTree:
         for col_name, values in X.iteritems():
             vals = values.unique()
             for v in vals:
-                idx_1 = X.index[X[col_name] == v].tolist()
-                idx_2 = X.index[X[col_name] != v].tolist()
+                if type(v) == 'int':
+                    idx_1 = X.index[X[col_name] == v].tolist()
+                    idx_2 = X.index[X[col_name] != v].tolist()
+                else:
+                    idx_1 = X.index[X[col_name] <= v].tolist()
+                    idx_2 = X.index[X[col_name] > v].tolist()
                 wg = self._gini_w(y.iloc[idx_1].tolist(), y.iloc[idx_2].tolist())
                 if wg < g_min:
                     g_min = wg
                     feature = col_name
                     f_value = v
                     split_1, split_2 = idx_1, idx_2
-        return feature, f_value, split_1, split_2
+        return g_min, feature, f_value, split_1, split_2
 
     def _run_split(self, node, X, y):
         if self._is_leaf(X, y):
             node.set_term(y.value_counts().idxmax())
             return
-        feature, f_value, split_1, split_2 = self._chose_split(X, y)
+        gmi, feature, f_value, split_1, split_2 = self._chose_split(X, y)
         node.set_split(feature, f_value)
         # print(f'Made split: {node.feature} is {node.value}')
 
@@ -111,22 +115,16 @@ class DecisionTree:
         self._run_split(node.left, left_X, left_y)
         self._run_split(node.right, right_X, right_y)
 
-def stage6():
+def stage7():
     fn = input()
-    # fn = 'test/data_stage6_train.csv test/data_stage6_test.csv'
+    # fn = 'test/data_stage7.csv'
     fn = fn.split()
     df = pd.read_csv(fn[0], index_col=0)
     X = df.iloc[:, :-1]
     y = df['Survived']
-    df = pd.read_csv(fn[1], index_col=0)
-    X_test = df.iloc[:]
-    y_test = df['Survived']
 
-    tree = DecisionTree(74)
-    tree.fit(X, y)
-    y_pred = tree.predict(X_test)
-    cm = confusion_matrix(y_test, y_pred, normalize='true')
-    print(round(cm[1, 1], 3), round(cm[0, 0], 3))
+    gmi, feature, f_value, split_1, split_2 = DecisionTree()._chose_split(X, y)
+    print(round(gmi, 3), feature, round(f_value, 3), split_1, split_2)
 
-stage6()
+stage7()
 
