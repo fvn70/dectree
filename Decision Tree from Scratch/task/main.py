@@ -41,16 +41,16 @@ class DecisionTree:
     def predict(self, X):
         y_pred = []
         for i, x in X.iterrows():
-            print(f'Prediction for sample # {i}')
+            # print(f'Prediction for sample # {i}')
             pred = self._chk_sample(self.root, x)
             y_pred.append(pred)
         return y_pred
 
     def _chk_sample(self, node, x):
         if node.term:
-            print(f'   Predicted label: {node.label}')
+            # print(f'   Predicted label: {node.label}')
             return node.label
-        print(f'   Considering decision rule on feature {node.feature} with value {node.value}')
+        # print(f'   Considering decision rule on feature {node.feature} with value {node.value}')
         if node.feature in self.num_list:
             if x[node.feature] <= node.value:
                 return self._chk_sample(node.left, x)
@@ -109,7 +109,7 @@ class DecisionTree:
             return
         gmi, feature, f_value, split_1, split_2 = self._chose_split(X, y)
         node.set_split(feature, f_value)
-        print(f'Made split: {node.feature} is {node.value}')
+        # print(f'Made split: {node.feature} is {node.value}')
 
         node.left = Node()
         node.right = Node()
@@ -122,19 +122,21 @@ class DecisionTree:
         self._run_split(node.left, left_X, left_y)
         self._run_split(node.right, right_X, right_y)
 
-def stage8():
+def stage9():
     fn = input()
-    # fn = 'test/data_stage8_train.csv test/data_stage8_test.csv'
+    # fn = 'test/data_stage9_train.csv test/data_stage9_test.csv'
     fn = fn.split()
     df = pd.read_csv(fn[0], index_col=0)
     X = df.iloc[:, :-1]
     y = df['Survived']
     df = pd.read_csv(fn[1], index_col=0)
     X_test = df.iloc[:]
+    y_test = df['Survived']
 
-    tree = DecisionTree(1, ['Age', 'Fare'])
+    tree = DecisionTree(74, ['Age', 'Fare'])
     tree.fit(X, y)
     y_pred = tree.predict(X_test)
+    cm = confusion_matrix(y_test, y_pred, normalize='true')
+    print(round(cm[1, 1], 3), round(cm[0, 0], 3))
 
-stage8()
-
+stage9()
