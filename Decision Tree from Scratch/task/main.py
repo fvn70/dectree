@@ -30,9 +30,10 @@ class Node:
           return f'Node split by {self.feature} = {self.value}:\n {self.left} {self.right}'
 
 class DecisionTree:
-    def __init__(self, leaf_size=1):
+    def __init__(self, leaf_size=1, num_list=[]):
         self.root = Node()
         self.leaf_size = leaf_size
+        self.num_list = num_list
 
     def fit(self, X, y):
         self._run_split(self.root, X, y)
@@ -40,20 +41,26 @@ class DecisionTree:
     def predict(self, X):
         y_pred = []
         for i, x in X.iterrows():
-            # print(f'Prediction for sample # {i}')
+            print(f'Prediction for sample # {i}')
             pred = self._chk_sample(self.root, x)
             y_pred.append(pred)
         return y_pred
 
     def _chk_sample(self, node, x):
         if node.term:
-            # print(f'   Predicted label: {node.label}')
+            print(f'   Predicted label: {node.label}')
             return node.label
-        # print(f'   Considering decision rule on feature {node.feature} with value {node.value}')
-        if x[node.feature] == node.value:
-            return self._chk_sample(node.left, x)
+        print(f'   Considering decision rule on feature {node.feature} with value {node.value}')
+        if node.feature in self.num_list:
+            if x[node.feature] <= node.value:
+                return self._chk_sample(node.left, x)
+            else:
+                return self._chk_sample(node.right, x)
         else:
-            return self._chk_sample(node.right, x)
+            if x[node.feature] == node.value:
+                return self._chk_sample(node.left, x)
+            else:
+                return self._chk_sample(node.right, x)
 
     def _gini(self, lst: list):
         n = len(lst)
@@ -82,12 +89,12 @@ class DecisionTree:
         for col_name, values in X.iteritems():
             vals = values.unique()
             for v in vals:
-                if type(v) == 'int':
-                    idx_1 = X.index[X[col_name] == v].tolist()
-                    idx_2 = X.index[X[col_name] != v].tolist()
-                else:
+                if col_name in self.num_list:
                     idx_1 = X.index[X[col_name] <= v].tolist()
                     idx_2 = X.index[X[col_name] > v].tolist()
+                else:
+                    idx_1 = X.index[X[col_name] == v].tolist()
+                    idx_2 = X.index[X[col_name] != v].tolist()
                 wg = self._gini_w(y.iloc[idx_1].tolist(), y.iloc[idx_2].tolist())
                 if wg < g_min:
                     g_min = wg
@@ -102,7 +109,7 @@ class DecisionTree:
             return
         gmi, feature, f_value, split_1, split_2 = self._chose_split(X, y)
         node.set_split(feature, f_value)
-        # print(f'Made split: {node.feature} is {node.value}')
+        print(f'Made split: {node.feature} is {node.value}')
 
         node.left = Node()
         node.right = Node()
@@ -115,16 +122,19 @@ class DecisionTree:
         self._run_split(node.left, left_X, left_y)
         self._run_split(node.right, right_X, right_y)
 
-def stage7():
+def stage8():
     fn = input()
-    # fn = 'test/data_stage7.csv'
+    # fn = 'test/data_stage8_train.csv test/data_stage8_test.csv'
     fn = fn.split()
     df = pd.read_csv(fn[0], index_col=0)
     X = df.iloc[:, :-1]
     y = df['Survived']
+    df = pd.read_csv(fn[1], index_col=0)
+    X_test = df.iloc[:]
 
-    gmi, feature, f_value, split_1, split_2 = DecisionTree()._chose_split(X, y)
-    print(round(gmi, 3), feature, round(f_value, 3), split_1, split_2)
+    tree = DecisionTree(1, ['Age', 'Fare'])
+    tree.fit(X, y)
+    y_pred = tree.predict(X_test)
 
-stage7()
+stage8()
 
